@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ANALYSIS_OPTIONS, AnalysisType } from '@/types/analysis';
 
 interface AnalysisResponse {
@@ -22,12 +22,21 @@ interface AnalysisResponse {
   analysis_summary?: string;
 }
 
-const StockAnalysisComponent = () => {
-  const [stockSymbol, setStockSymbol] = useState('');
+function StockAnalysisComponent() {
+  const [mounted, setMounted] = useState<boolean>(false);
+  const [stockSymbol, setStockSymbol] = useState<string>('');
   const [analysisType, setAnalysisType] = useState<AnalysisType>('technical');
   const [analysis, setAnalysis] = useState<AnalysisResponse | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return <div className="min-h-screen bg-gray-50 dark:bg-gray-900" />;
+  }
 
   const formatAnalysisResponse = (data: any): AnalysisResponse => {
     try {
@@ -114,7 +123,7 @@ const StockAnalysisComponent = () => {
     }
   };
 
-  return (
+  const content = (
     <div className="max-w-4xl mx-auto p-6">
       <div className="bg-white dark:bg-gray-800 shadow-xl rounded-xl p-8 mb-8">
         <div className="flex items-center gap-3 mb-6">
@@ -247,6 +256,9 @@ const StockAnalysisComponent = () => {
       </div>
     </div>
   );
-};
 
+  return content;
+}
+
+export { StockAnalysisComponent };
 export default StockAnalysisComponent;
