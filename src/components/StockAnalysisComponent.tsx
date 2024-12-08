@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
+import { ANALYSIS_OPTIONS, AnalysisType } from '@/types/analysis';
 
 interface AnalysisResponse {
   technical_indicators?: {
@@ -23,7 +24,7 @@ interface AnalysisResponse {
 
 const StockAnalysisComponent = () => {
   const [stockSymbol, setStockSymbol] = useState('');
-  const [analysisType, setAnalysisType] = useState('technical');
+  const [analysisType, setAnalysisType] = useState<AnalysisType>('technical');
   const [analysis, setAnalysis] = useState<AnalysisResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -146,8 +147,11 @@ const StockAnalysisComponent = () => {
             onChange={(e) => setAnalysisType(e.target.value)}
             className="px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white"
           >
-            <option value="technical">Technical Analysis</option>
-            <option value="fundamental">Fundamental Analysis</option>
+            {ANALYSIS_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
           
           <button 
