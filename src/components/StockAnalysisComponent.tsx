@@ -153,7 +153,7 @@ function StockAnalysisComponent() {
           
           <select 
             value={analysisType}
-            onChange={(e) => setAnalysisType(e.target.value)}
+            onChange={(e) => setAnalysisType(e.target.value as AnalysisType)}
             className="px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white"
           >
             {ANALYSIS_OPTIONS.map((option) => (
