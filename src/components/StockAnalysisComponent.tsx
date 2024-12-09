@@ -38,27 +38,97 @@ function StockAnalysisComponent() {
     return <div className="min-h-screen bg-gray-50 dark:bg-gray-900" />;
   }
 
+  const cleanText = (text: string): string => {
+    return text
+      .replace(/\*\*/g, '') // Remove **
+      .replace(/#+/g, '')   // Remove #
+      .replace(/^[-*]\s*/g, '') // Remove bullet points at start
+      .trim();
+  };
+
   const formatAnalysisResponse = (data: any): AnalysisResponse => {
     try {
-      // If the response is a string, try to parse it as JSON
-      const parsedData = typeof data === 'string' ? JSON.parse(data) : data;
-      
-      // Return structured data if it matches our interface
-      if (typeof parsedData === 'object' && parsedData !== null) {
-        return parsedData;
+      // If the response is a string, clean and format it
+      if (typeof data === 'string') {
+        const lines = data.split('\n').map(line => {
+          // Clean each line
+          const cleanedLine = cleanText(line);
+          return cleanedLine;
+        }).filter(Boolean); // Remove empty lines
+        
+        return {
+          analysis_summary: lines.join('\n')
+        };
       }
-      
-      // If it's just a string response, wrap it in our interface
+
+      // If it's an object, clean all string values
+      if (typeof data === 'object' && data !== null) {
+        const cleanedData = Object.entries(data).reduce((acc, [key, value]) => {
+          if (typeof value === 'string') {
+            acc[key] = cleanText(value);
+          } else {
+            acc[key] = value;
+          }
+          return acc;
+        }, {} as Record<string, any>);
+        
+        return cleanedData;
+      }
+
       return {
-        analysis_summary: typeof data === 'string' ? data : JSON.stringify(data, null, 2)
+        analysis_summary: typeof data === 'string' ? cleanText(data) : JSON.stringify(data, null, 2)
       };
     } catch (e) {
       console.log('Raw data received:', data);
-      // If parsing fails, return the original data as a summary
       return {
         analysis_summary: String(data)
       };
     }
+  };
+
+  const renderAnalysisSummary = (summary: string) => {
+    return summary.split('\n').map((line, index) => {
+      // Handle "Running:" lines
+      if (line.trim().toLowerCase().startsWith('running:')) {
+        return (
+          <p key={index} className="text-center italic text-gray-600 dark:text-gray-400 mb-4">
+            {line}
+          </p>
+        );
+      }
+
+      // Handle headings (lines ending with ':')
+      if (line.trim().endsWith(':')) {
+        return (
+          <h3 key={index} className="text-3xl font-bold mb-6 text-gray-800 dark:text-gray-100 border-b-2 border-blue-500 pb-2">
+            {line.replace(/:$/, '')}
+          </h3>
+        );
+      }
+
+      // Handle bullet points
+      if (line.trim().startsWith('-')) {
+        return (
+          <div key={index} className="flex items-start mb-3 ml-6">
+            <span className="text-blue-500 mr-3 text-lg">•</span>
+            <p className="flex-1 text-gray-700 dark:text-gray-300">
+              {line.substring(1).trim()}
+            </p>
+          </div>
+        );
+      }
+
+      // Regular text
+      if (line.trim()) {
+        return (
+          <p key={index} className="mb-4 text-gray-600 dark:text-gray-400">
+            {line}
+          </p>
+        );
+      }
+
+      return null;
+    });
   };
 
   const handleAnalyze = async () => {
@@ -240,7 +310,7 @@ function StockAnalysisComponent() {
         )}
 
         {analysis && (
-          <div className="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-6">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
             <div className="flex items-center gap-2 mb-4">
               <svg className="h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
@@ -250,61 +320,8 @@ function StockAnalysisComponent() {
             
             <div className="prose dark:prose-invert max-w-none">
               {analysis.analysis_summary ? (
-                <div className="whitespace-pre-wrap bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
-                  {analysis.analysis_summary.split('\n').map((line, index) => {
-                    // Handle "Running:" lines
-                    if (line.trim().startsWith('Running:')) {
-                      return (
-                        <p key={index} className="text-center italic text-gray-600 dark:text-gray-400 mb-4">
-                          {formatTextWithLinks(line)}
-                        </p>
-                      );
-                    }
-
-                    // Check if line is a heading (starts with # or contains : at the end)
-                    if (line.startsWith('#') || line.endsWith(':')) {
-                      const cleanedText = line
-                        .replace('#', '')
-                        .replace(':', '')
-                        .replace(/\*\*/g, '')
-                        .trim();
-                      
-                      return (
-                        <h3 key={index} className="text-3xl font-bold mb-6 text-gray-800 dark:text-gray-100 border-b-2 border-blue-500 pb-2">
-                          {cleanedText}
-                        </h3>
-                      );
-                    }
-                    
-                    // Check if line is a sub-point (starts with - or *)
-                    if (line.trim().startsWith('-') || line.trim().startsWith('*')) {
-                      const cleanedText = line
-                        .replace(/^[-*]\s*/, '')
-                        .replace(/\*\*/g, '')
-                        .trim();
-                        
-                      return (
-                        <div key={index} className="flex items-start mb-3 ml-6">
-                          <span className="text-blue-500 mr-3 text-lg">•</span>
-                          <p className="flex-1 text-gray-700 dark:text-gray-300">
-                            {formatTextWithLinks(cleanedText)}
-                          </p>
-                        </div>
-                      );
-                    }
-
-                    // Regular text with link formatting
-                    if (line.trim()) {
-                      const cleanedText = line.replace(/\*\*/g, '').trim();
-                      return (
-                        <p key={index} className="mb-4 text-gray-600 dark:text-gray-400">
-                          {formatTextWithLinks(cleanedText)}
-                        </p>
-                      );
-                    }
-
-                    return null;
-                  })}
+                <div className="whitespace-pre-wrap">
+                  {renderAnalysisSummary(analysis.analysis_summary)}
                 </div>
               ) : (
                 <div className="grid grid-cols-1 gap-6">
