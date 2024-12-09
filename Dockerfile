@@ -1,9 +1,6 @@
-# Use Node.js LTS version
-FROM node:18-alpine AS builder
+FROM alpine:3.20
 
-# Install necessary build tools
-RUN apk add --no-cache libc6-compat python3 make g++
-
+ENV NODE_VERSION 22.12.0
 # Set working directory
 WORKDIR /app
 
@@ -13,8 +10,7 @@ COPY tsconfig.json next.config.js ./
 COPY tailwind.config.js postcss.config.js ./
 
 # Install dependencies
-RUN npm ci
-
+RUN npm install
 # Copy source code and public assets
 COPY src/ ./src/
 COPY public/ ./public/
@@ -22,24 +18,7 @@ COPY public/ ./public/
 # Build the application
 RUN npm run build
 
-# Production image
-FROM node:18-alpine AS runner
-
-# Set working directory
-WORKDIR /app
-
-# Copy package files
-COPY --from=builder /app/package.json ./
-COPY --from=builder /app/package-lock.json ./
-
-# Install production dependencies only
-RUN npm ci --only=production
-
-# Copy built application
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/public ./public
-
-# Set environment variables
+#Set environment variables
 ENV NODE_ENV=production
 ENV PORT=3000
 
