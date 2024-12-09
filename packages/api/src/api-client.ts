@@ -13,9 +13,9 @@ apiClient.interceptors.request.use((config) => {
   config.headers = config.headers || {}
   
   // Add any auth tokens if needed
-  const token = // get from your auth store
+  const token = localStorage.getItem('auth_token') || ''
   if (token) {
-    config.headers.Authorization = `Bearer ${token}`
+    config.headers['Authorization'] = `Bearer ${token}`
   }
   
   return config

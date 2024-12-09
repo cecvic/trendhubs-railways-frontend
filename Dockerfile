@@ -12,25 +12,34 @@ COPY package.json package-lock.json ./
 COPY tsconfig.json next.config.js ./
 COPY tailwind.config.js postcss.config.js ./
 
-# Copy source code and dependencies
-COPY src/ ./src/
-COPY public/ ./public/
-
 # Install dependencies
 RUN npm ci
+
+# Copy source code and public assets
+COPY src/ ./src/
+COPY public/ ./public/
 
 # Build the application
 RUN npm run build
 
 # Production image
 FROM node:18-alpine AS runner
+
+# Set working directory
 WORKDIR /app
 
-# Copy necessary files from builder
+# Install production dependencies only
+COPY --from=builder /app/package.json ./
+COPY --from=builder /app/package-lock.json ./
+RUN npm ci --only=production
+
+# Copy built application
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/node_modules ./node_modules
+
+# Set environment variables
+ENV NODE_ENV production
+ENV PORT 3000
 
 # Expose the port the app runs on
 EXPOSE 3000
