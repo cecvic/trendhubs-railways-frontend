@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "buildCommand": "turbo build --filter=stock-analysis-app...",
+  "outputDirectory": ".next",
+  "framework": "nextjs",
+  "regions": ["fra1"],
+  "env": {
+    "NEXT_PUBLIC_API_URL": "@next_public_api_url"
+  }
+} 
