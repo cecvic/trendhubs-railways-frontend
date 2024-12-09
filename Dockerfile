@@ -7,11 +7,8 @@ RUN apk add --no-cache libc6-compat python3 make g++
 # Set working directory
 WORKDIR /app
 
-# Install yarn globally
-RUN npm install -g yarn
-
 # Copy package files and configuration
-COPY package.json yarn.lock ./
+COPY package.json package-lock.json ./
 COPY tsconfig.json next.config.js ./
 COPY tailwind.config.js postcss.config.js ./
 
@@ -20,10 +17,10 @@ COPY src/ ./src/
 COPY public/ ./public/
 
 # Install dependencies
-RUN yarn install --frozen-lockfile
+RUN npm ci
 
 # Build the application
-RUN yarn build
+RUN npm run build
 
 # Production image
 FROM node:18-alpine AS runner
@@ -39,4 +36,4 @@ COPY --from=builder /app/node_modules ./node_modules
 EXPOSE 3000
 
 # Start the application
-CMD ["yarn", "start"] 
+CMD ["npm", "start"] 
