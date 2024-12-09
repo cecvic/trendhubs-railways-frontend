@@ -28,9 +28,11 @@ FROM node:18-alpine AS runner
 # Set working directory
 WORKDIR /app
 
-# Install production dependencies only
+# Copy package files
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/package-lock.json ./
+
+# Install production dependencies only
 RUN npm ci --only=production
 
 # Copy built application
@@ -38,8 +40,8 @@ COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 
 # Set environment variables
-ENV NODE_ENV production
-ENV PORT 3000
+ENV NODE_ENV=production
+ENV PORT=3000
 
 # Expose the port the app runs on
 EXPOSE 3000
