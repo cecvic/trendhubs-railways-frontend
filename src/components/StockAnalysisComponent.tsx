@@ -123,6 +123,35 @@ function StockAnalysisComponent() {
     }
   };
 
+  const formatTextWithLinks = (text: string) => {
+    // Remove ** and all # characters
+    text = text.replace(/\*\*/g, '').replace(/#+/g, '');
+    
+    // URL regex pattern
+    const urlPattern = /(https?:\/\/[^\s]+)/g;
+    
+    // Split text by URLs and map through parts
+    const parts = text.split(urlPattern);
+    
+    return parts.map((part, index) => {
+      if (urlPattern.test(part)) {
+        // If part is a URL, render as link
+        return (
+          <a
+            key={index}
+            href={part}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-500 hover:text-blue-600 underline"
+          >
+            {new URL(part).hostname}
+          </a>
+        );
+      }
+      return part;
+    });
+  };
+
   const content = (
     <div className="max-w-4xl mx-auto p-6">
       <div className="bg-white dark:bg-gray-800 shadow-xl rounded-xl p-8 mb-8">
@@ -222,11 +251,35 @@ function StockAnalysisComponent() {
             <div className="prose dark:prose-invert max-w-none">
               {analysis.analysis_summary ? (
                 <div className="whitespace-pre-wrap bg-white dark:bg-gray-800 p-4 rounded-lg shadow-inner">
-                  {analysis.analysis_summary.split('\n').map((line, index) => (
-                    <p key={index} className="mb-2">
-                      {line}
-                    </p>
-                  ))}
+                  {analysis.analysis_summary.split('\n').map((line, index) => {
+                    // Check if line is a heading (starts with # or contains : at the end)
+                    if (line.startsWith('#') || line.endsWith(':')) {
+                      return (
+                        <h3 key={index} className="text-2xl font-bold mb-4 text-blue-600 dark:text-blue-400">
+                          {line.replace('#', '').trim()}
+                        </h3>
+                      );
+                    }
+                    
+                    // Check if line is a sub-point (starts with - or *)
+                    if (line.trim().startsWith('-') || line.trim().startsWith('*')) {
+                      return (
+                        <div key={index} className="flex items-start mb-2 ml-4">
+                          <span className="mr-2">•</span>
+                          <p className="flex-1">
+                            {formatTextWithLinks(line.replace(/^[-*]\s*/, ''))}
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    // Regular text with link formatting
+                    return (
+                      <p key={index} className="mb-2">
+                        {formatTextWithLinks(line)}
+                      </p>
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
