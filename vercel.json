@@ -1,10 +1,42 @@
 {
   "version": 2,
-  "buildCommand": "turbo build --filter=stock-analysis-app...",
+  "buildCommand": "next build",
   "outputDirectory": ".next",
   "framework": "nextjs",
-  "regions": ["fra1"],
   "env": {
-    "NEXT_PUBLIC_API_URL": "@next_public_api_url"
-  }
-} 
+    "NEXT_PUBLIC_API_URL": "https://fastapi-backend-production-2f5e.up.railway.app"
+  },
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Credentials",
+          "value": "true"
+        },
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET,OPTIONS,PATCH,DELETE,POST,PUT"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization"
+        }
+      ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/analyze-stock",
+      "destination": "https://fastapi-backend-production-2f5e.up.railway.app/analyze-stock"
+    },
+    {
+      "source": "/health",
+      "destination": "https://fastapi-backend-production-2f5e.up.railway.app/health"
+    }
+  ]
+}
