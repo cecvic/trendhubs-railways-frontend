@@ -124,8 +124,8 @@ function StockAnalysisComponent() {
   };
 
   const formatTextWithLinks = (text: string) => {
-    // Remove ** and all # characters
-    text = text.replace(/\*\*/g, '').replace(/#+/g, '');
+    // Remove ** characters from text
+    text = text.replace(/\*\*/g, '');
     
     // URL regex pattern
     const urlPattern = /(https?:\/\/[^\s]+)/g;
@@ -250,55 +250,80 @@ function StockAnalysisComponent() {
             
             <div className="prose dark:prose-invert max-w-none">
               {analysis.analysis_summary ? (
-                <div className="whitespace-pre-wrap bg-white dark:bg-gray-800 p-4 rounded-lg shadow-inner">
+                <div className="whitespace-pre-wrap bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
                   {analysis.analysis_summary.split('\n').map((line, index) => {
+                    // Handle "Running:" lines
+                    if (line.trim().startsWith('Running:')) {
+                      return (
+                        <p key={index} className="text-center italic text-gray-600 dark:text-gray-400 mb-4">
+                          {formatTextWithLinks(line)}
+                        </p>
+                      );
+                    }
+
                     // Check if line is a heading (starts with # or contains : at the end)
                     if (line.startsWith('#') || line.endsWith(':')) {
+                      const cleanedText = line
+                        .replace('#', '')
+                        .replace(':', '')
+                        .replace(/\*\*/g, '')
+                        .trim();
+                      
                       return (
-                        <h3 key={index} className="text-2xl font-bold mb-4 text-blue-600 dark:text-blue-400">
-                          {line.replace('#', '').trim()}
+                        <h3 key={index} className="text-3xl font-bold mb-6 text-gray-800 dark:text-gray-100 border-b-2 border-blue-500 pb-2">
+                          {cleanedText}
                         </h3>
                       );
                     }
                     
                     // Check if line is a sub-point (starts with - or *)
                     if (line.trim().startsWith('-') || line.trim().startsWith('*')) {
+                      const cleanedText = line
+                        .replace(/^[-*]\s*/, '')
+                        .replace(/\*\*/g, '')
+                        .trim();
+                        
                       return (
-                        <div key={index} className="flex items-start mb-2 ml-4">
-                          <span className="mr-2">•</span>
-                          <p className="flex-1">
-                            {formatTextWithLinks(line.replace(/^[-*]\s*/, ''))}
+                        <div key={index} className="flex items-start mb-3 ml-6">
+                          <span className="text-blue-500 mr-3 text-lg">•</span>
+                          <p className="flex-1 text-gray-700 dark:text-gray-300">
+                            {formatTextWithLinks(cleanedText)}
                           </p>
                         </div>
                       );
                     }
 
                     // Regular text with link formatting
-                    return (
-                      <p key={index} className="mb-2">
-                        {formatTextWithLinks(line)}
-                      </p>
-                    );
+                    if (line.trim()) {
+                      const cleanedText = line.replace(/\*\*/g, '').trim();
+                      return (
+                        <p key={index} className="mb-4 text-gray-600 dark:text-gray-400">
+                          {formatTextWithLinks(cleanedText)}
+                        </p>
+                      );
+                    }
+
+                    return null;
                   })}
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-6">
                   {analysis.technical_indicators && (
-                    <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm">
-                      <h3 className="font-semibold text-lg mb-2">Technical Indicators</h3>
-                      <pre className="text-sm overflow-auto">{JSON.stringify(analysis.technical_indicators, null, 2)}</pre>
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+                      <h3 className="text-3xl font-bold mb-6 text-gray-800 dark:text-gray-100 border-b-2 border-blue-500 pb-2">Technical Indicators</h3>
+                      <pre className="text-sm overflow-auto text-gray-700 dark:text-gray-300">{JSON.stringify(analysis.technical_indicators, null, 2)}</pre>
                     </div>
                   )}
                   {analysis.fundamental_data && (
-                    <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm">
-                      <h3 className="font-semibold text-lg mb-2">Fundamental Data</h3>
-                      <pre className="text-sm overflow-auto">{JSON.stringify(analysis.fundamental_data, null, 2)}</pre>
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+                      <h3 className="text-3xl font-bold mb-6 text-gray-800 dark:text-gray-100 border-b-2 border-blue-500 pb-2">Fundamental Data</h3>
+                      <pre className="text-sm overflow-auto text-gray-700 dark:text-gray-300">{JSON.stringify(analysis.fundamental_data, null, 2)}</pre>
                     </div>
                   )}
                   {analysis.price_data && (
-                    <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm">
-                      <h3 className="font-semibold text-lg mb-2">Price Data</h3>
-                      <pre className="text-sm overflow-auto">{JSON.stringify(analysis.price_data, null, 2)}</pre>
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+                      <h3 className="text-3xl font-bold mb-6 text-gray-800 dark:text-gray-100 border-b-2 border-blue-500 pb-2">Price Data</h3>
+                      <pre className="text-sm overflow-auto text-gray-700 dark:text-gray-300">{JSON.stringify(analysis.price_data, null, 2)}</pre>
                     </div>
                   )}
                 </div>
