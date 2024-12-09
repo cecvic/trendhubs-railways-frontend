@@ -39,9 +39,12 @@ function StockAnalysisComponent() {
   }
 
   const cleanText = (text: string): string => {
-    return text
-      .replace(/\*\*/g, '') // Remove **
-      .replace(/#+/g, '')   // Remove #
+    // First remove ** that wrap around words
+    const cleanedText = text.replace(/\*\*([^*]+)\*\*/g, '$1');
+    
+    return cleanedText
+      .replace(/\*\*/g, '')     // Remove any remaining **
+      .replace(/#+/g, '')       // Remove #
       .replace(/^[-*]\s*/g, '') // Remove bullet points at start
       .trim();
   };
@@ -50,11 +53,11 @@ function StockAnalysisComponent() {
     try {
       // If the response is a string, clean and format it
       if (typeof data === 'string') {
-        const lines = data.split('\n').map(line => {
-          // Clean each line
-          const cleanedLine = cleanText(line);
-          return cleanedLine;
-        }).filter(Boolean); // Remove empty lines
+        // Clean the entire string first to handle multi-line ** patterns
+        const cleanedData = cleanText(data);
+        const lines = cleanedData.split('\n')
+          .map(line => line.trim())
+          .filter(Boolean); // Remove empty lines
         
         return {
           analysis_summary: lines.join('\n')
@@ -63,15 +66,17 @@ function StockAnalysisComponent() {
 
       // If it's an object, clean all string values
       if (typeof data === 'object' && data !== null) {
-        const cleanedData = Object.entries(data).reduce((acc, [key, value]) => {
+        const cleanedData: Record<string, any> = {};
+        for (const [key, value] of Object.entries(data)) {
           if (typeof value === 'string') {
-            acc[key] = cleanText(value);
+            cleanedData[key] = cleanText(value);
+          } else if (typeof value === 'object' && value !== null) {
+            // Recursively clean nested objects
+            cleanedData[key] = formatAnalysisResponse(value);
           } else {
-            acc[key] = value;
+            cleanedData[key] = value;
           }
-          return acc;
-        }, {} as Record<string, any>);
-        
+        }
         return cleanedData;
       }
 
@@ -79,9 +84,10 @@ function StockAnalysisComponent() {
         analysis_summary: typeof data === 'string' ? cleanText(data) : JSON.stringify(data, null, 2)
       };
     } catch (e) {
-      console.log('Raw data received:', data);
+      console.error('Error formatting analysis response:', e);
+      // If there's an error, still try to clean the data
       return {
-        analysis_summary: String(data)
+        analysis_summary: cleanText(String(data))
       };
     }
   };
@@ -99,20 +105,22 @@ function StockAnalysisComponent() {
 
       // Handle headings (lines ending with ':')
       if (line.trim().endsWith(':')) {
+        const headingText = line.replace(/:$/, '').trim();
         return (
           <h3 key={index} className="text-3xl font-bold mb-6 text-gray-800 dark:text-gray-100 border-b-2 border-blue-500 pb-2">
-            {line.replace(/:$/, '')}
+            {headingText}
           </h3>
         );
       }
 
       // Handle bullet points
       if (line.trim().startsWith('-')) {
+        const bulletText = line.substring(1).trim();
         return (
           <div key={index} className="flex items-start mb-3 ml-6">
             <span className="text-blue-500 mr-3 text-lg">•</span>
             <p className="flex-1 text-gray-700 dark:text-gray-300">
-              {line.substring(1).trim()}
+              {bulletText}
             </p>
           </div>
         );
