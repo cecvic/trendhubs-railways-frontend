@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import Image from 'next/image';
+import Head from 'next/head';
 import {
   analyzeStockTechnical,
   analyzeStockFundamental,
@@ -14,6 +16,35 @@ interface AnalysisResult {
   type: AnalysisType;
   result: string | Record<string, unknown>;
   error?: string;
+}
+
+function formatTextWithLinks(text: string): React.ReactNode[] {
+  // URL regex pattern - matches http/https URLs
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const parts = text.split(urlRegex);
+
+  return parts.map((part, index) => {
+    if (urlRegex.test(part)) {
+      try {
+        const url = new URL(part);
+        const displayText = url.hostname + url.pathname.replace(/\/$/, '');
+        return (
+          <a
+            key={index}
+            href={part}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-500 hover:text-blue-600 hover:underline"
+          >
+            {displayText}
+          </a>
+        );
+      } catch {
+        return part;
+      }
+    }
+    return part;
+  });
 }
 
 export default function StockAnalyzer() {
@@ -106,127 +137,152 @@ export default function StockAnalyzer() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto p-6">
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              Stock Analysis Dashboard
-            </h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-2">
-              Comprehensive market analysis tools for informed trading decisions
+    <>
+      <Head>
+        <title>Trendhubs - Stock Analysis</title>
+      </Head>
+      <div className="max-w-7xl mx-auto p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
+          {/* Header with Logo */}
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center gap-4">
+              <Image
+                src="/Trendhubs-full.png"
+                alt="Trendhubs Logo"
+                width={200}
+                height={50}
+                className="dark:filter dark:brightness-200"
+              />
+              <div>
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  Stock Analysis Dashboard
+                </h1>
+                <p className="text-gray-600 dark:text-gray-400 mt-2">
+                  Comprehensive market analysis tools for informed trading decisions
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={clearResults}
+              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-200"
+              disabled={isLoading || results.length === 0}
+            >
+              Clear Results
+            </button>
+          </div>
+
+          {/* Search Bar */}
+          <div className="relative mb-8">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+            <input
+              type="text"
+              value={stockSymbol}
+              onChange={(e) => setStockSymbol(e.target.value.toUpperCase())}
+              placeholder="Enter stock symbol (e.g., AAPL)"
+              className="w-full pl-10 pr-4 py-3 text-lg border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors duration-200"
+              disabled={isLoading}
+            />
+          </div>
+
+          {/* Analysis Options */}
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+            {analysisTypes.map(({ type, label, icon }) => (
+              <button
+                key={type}
+                onClick={() => handleAnalysis(type)}
+                disabled={isLoading}
+                className={`
+                  flex items-center justify-center gap-3 p-4 rounded-xl text-left transition-all duration-200
+                  ${isLoading 
+                    ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed opacity-50'
+                    : 'bg-white dark:bg-gray-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:shadow-md border border-gray-200 dark:border-gray-600'
+                  }
+                `}
+              >
+                <svg className="h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={icon} />
+                </svg>
+                <span className="font-medium">{label}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Error Display */}
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 rounded-r-xl">
+              <div className="flex items-center gap-2 text-red-700 dark:text-red-400">
+                <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+                {error}
+              </div>
+            </div>
+          )}
+
+          {/* Loading Indicator */}
+          {isLoading && (
+            <div className="flex items-center justify-center gap-3 py-8 text-blue-600 dark:text-blue-400">
+              <svg className="animate-spin h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <span className="text-lg font-medium">Analyzing {stockSymbol}...</span>
+            </div>
+          )}
+
+          {/* Results Display with improved link formatting */}
+          <div className="space-y-6">
+            {results.map((result, index) => (
+              <div 
+                key={index} 
+                className="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-6 border border-gray-200 dark:border-gray-700"
+              >
+                <div className="flex items-center gap-3 mb-4">
+                  <svg className="h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round" 
+                      strokeWidth={2} 
+                      d={analysisTypes.find(a => a.type === result.type)?.icon} 
+                    />
+                  </svg>
+                  <h3 className="text-xl font-semibold">
+                    {analysisTypes.find(a => a.type === result.type)?.label} Results
+                  </h3>
+                </div>
+                {result.error ? (
+                  <div className="text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-4 rounded-lg">
+                    {result.error}
+                  </div>
+                ) : (
+                  <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <div className="whitespace-pre-wrap text-sm text-gray-800 dark:text-gray-200">
+                      {typeof result.result === 'string' 
+                        ? result.result.split('\n').map((line, i) => (
+                            <div key={i} className="mb-2">
+                              {formatTextWithLinks(line)}
+                            </div>
+                          ))
+                        : JSON.stringify(result.result, null, 2)}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Copyright Footer */}
+          <div className="mt-12 pt-6 border-t border-gray-200 dark:border-gray-700">
+            <p className="text-center text-sm text-gray-600 dark:text-gray-400">
+              © {new Date().getFullYear()} Trendhubs™. All rights reserved. Developed by Trendhubs Artificial Intelligence.
             </p>
           </div>
-          <button
-            onClick={clearResults}
-            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-200"
-            disabled={isLoading || results.length === 0}
-          >
-            Clear Results
-          </button>
-        </div>
-
-        {/* Search Bar */}
-        <div className="relative mb-8">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          </div>
-          <input
-            type="text"
-            value={stockSymbol}
-            onChange={(e) => setStockSymbol(e.target.value.toUpperCase())}
-            placeholder="Enter stock symbol (e.g., AAPL)"
-            className="w-full pl-10 pr-4 py-3 text-lg border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors duration-200"
-            disabled={isLoading}
-          />
-        </div>
-
-        {/* Analysis Options */}
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-          {analysisTypes.map(({ type, label, icon }) => (
-            <button
-              key={type}
-              onClick={() => handleAnalysis(type)}
-              disabled={isLoading}
-              className={`
-                flex items-center justify-center gap-3 p-4 rounded-xl text-left transition-all duration-200
-                ${isLoading 
-                  ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed opacity-50'
-                  : 'bg-white dark:bg-gray-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:shadow-md border border-gray-200 dark:border-gray-600'
-                }
-              `}
-            >
-              <svg className="h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={icon} />
-              </svg>
-              <span className="font-medium">{label}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* Error Display */}
-        {error && (
-          <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 rounded-r-xl">
-            <div className="flex items-center gap-2 text-red-700 dark:text-red-400">
-              <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
-              {error}
-            </div>
-          </div>
-        )}
-
-        {/* Loading Indicator */}
-        {isLoading && (
-          <div className="flex items-center justify-center gap-3 py-8 text-blue-600 dark:text-blue-400">
-            <svg className="animate-spin h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <span className="text-lg font-medium">Analyzing {stockSymbol}...</span>
-          </div>
-        )}
-
-        {/* Results Display */}
-        <div className="space-y-6">
-          {results.map((result, index) => (
-            <div 
-              key={index} 
-              className="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-6 border border-gray-200 dark:border-gray-700"
-            >
-              <div className="flex items-center gap-3 mb-4">
-                <svg className="h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                    strokeWidth={2} 
-                    d={analysisTypes.find(a => a.type === result.type)?.icon} 
-                  />
-                </svg>
-                <h3 className="text-xl font-semibold">
-                  {analysisTypes.find(a => a.type === result.type)?.label} Results
-                </h3>
-              </div>
-              {result.error ? (
-                <div className="text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-4 rounded-lg">
-                  {result.error}
-                </div>
-              ) : (
-                <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
-                  <pre className="whitespace-pre-wrap text-sm text-gray-800 dark:text-gray-200">
-                    {typeof result.result === 'string' 
-                      ? result.result 
-                      : JSON.stringify(result.result, null, 2)}
-                  </pre>
-                </div>
-              )}
-            </div>
-          ))}
         </div>
       </div>
-    </div>
+    </>
   );
 } 
