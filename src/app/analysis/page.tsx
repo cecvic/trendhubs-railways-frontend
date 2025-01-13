@@ -1,12 +1,12 @@
 'use client';
 
-import StockAnalyzer from '@/components/stock-analyzer';
+import StockAnalysisComponent from '@/components/StockAnalysisComponent';
 
 export default function AnalysisPage() {
   return (
     <main className="min-h-screen bg-gray-50 py-8">
       <div className="container mx-auto px-4">
-        <StockAnalyzer />
+        <StockAnalysisComponent />
       </div>
     </main>
   );

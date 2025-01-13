@@ -23,51 +23,73 @@ interface HealthCheckResponse {
   status: 'healthy';
 }
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
 // Create axios instance with configuration
-const createApiClient = (baseURL: string) => axios.create({
-  baseURL,
+const apiClient = axios.create({
+  baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
   },
-  withCredentials: true,
+  // Remove withCredentials since we're not using cookies
+  withCredentials: false,
 });
-
-// Client for proxied requests through Vercel
-const apiClient = createApiClient('');  // Empty base URL since we're using absolute paths
-
-// Client for direct testing of the backend
-export const testApiClient = createApiClient('https://fastapi-backend-production-2f5e.up.railway.app');
 
 // Add request interceptor for error handling
 apiClient.interceptors.request.use(
   (config) => {
+    console.log('API Request Details:', {
+      url: config.url,
+      method: config.method,
+      data: config.data,
+      headers: config.headers
+    });
     return config;
   },
   (error) => {
-    console.error('API Request Error:', error);
+    console.error('API Request Setup Error:', error);
     return Promise.reject(error);
   }
 );
 
 // Add response interceptor for error handling
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log('API Response Success:', {
+      status: response.status,
+      data: response.data,
+      headers: response.headers
+    });
+    return response;
+  },
   (error) => {
     if (error.response) {
-      // The request was made and the server responded with a status code
-      // that falls out of the range of 2xx
-      console.error('API Error Response:', {
+      console.error('API Error Response Details:', {
         status: error.response.status,
         data: error.response.data,
         headers: error.response.headers,
+        config: {
+          url: error.response.config.url,
+          method: error.response.config.method,
+          data: error.response.config.data
+        }
       });
+      // Throw a more informative error message
+      if (error.response.data?.detail) {
+        throw new Error(error.response.data.detail);
+      }
     } else if (error.request) {
-      // The request was made but no response was received
-      console.error('API No Response:', error.request);
+      console.error('API No Response Error:', {
+        request: error.request,
+        config: error.config
+      });
+      throw new Error('No response received from server. Please check if the backend is running.');
     } else {
-      // Something happened in setting up the request that triggered an Error
-      console.error('API Request Setup Error:', error.message);
+      console.error('API Request Setup Error:', {
+        message: error.message,
+        config: error.config
+      });
     }
     return Promise.reject(error);
   }
@@ -84,24 +106,5 @@ export const checkHealth = async (): Promise<HealthCheckResponse> => {
   const response = await apiClient.get<HealthCheckResponse>('/health');
   return response.data;
 };
-
-// Example usage of different analysis types
-export const analyzeStockTechnical = (symbol: string) => 
-  analyzeStock({ stock_symbol: symbol, analysis_type: 'technical' });
-
-export const analyzeStockFundamental = (symbol: string) => 
-  analyzeStock({ stock_symbol: symbol, analysis_type: 'fundamental' });
-
-export const analyzeStockSentiment = (symbol: string) => 
-  analyzeStock({ stock_symbol: symbol, analysis_type: 'sentiment' });
-
-export const analyzeStockComparative = (symbol: string) => 
-  analyzeStock({ stock_symbol: symbol, analysis_type: 'comparative' });
-
-export const analyzeStockNews = (symbol: string) => 
-  analyzeStock({ stock_symbol: symbol, analysis_type: 'news_based' });
-
-export const analyzeStockRisk = (symbol: string) => 
-  analyzeStock({ stock_symbol: symbol, analysis_type: 'risk' });
 
 export default apiClient; 

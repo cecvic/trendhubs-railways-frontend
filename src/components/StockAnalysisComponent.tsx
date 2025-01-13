@@ -2,6 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { ANALYSIS_OPTIONS, AnalysisType } from '@/types/analysis';
+import { analyzeStock } from '@/utils/api-client';
+
+// Log available analysis options on import
+console.log('Available Analysis Options:', ANALYSIS_OPTIONS);
 
 interface AnalysisResponse {
   technical_indicators?: {
@@ -32,6 +36,7 @@ function StockAnalysisComponent() {
 
   useEffect(() => {
     setMounted(true);
+    console.log('Component mounted');
   }, []);
 
   if (!mounted) {
@@ -139,7 +144,20 @@ function StockAnalysisComponent() {
     });
   };
 
+  const handleAnalysisTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newType = e.target.value as AnalysisType;
+    console.log('Analysis type changed to:', newType);
+    setAnalysisType(newType);
+  };
+
   const handleAnalyze = async () => {
+    console.log('handleAnalyze called with:', {
+      stockSymbol,
+      analysisType,
+      loading,
+      error
+    });
+
     if (!stockSymbol) {
       setError('Please enter a stock symbol');
       return;
@@ -150,52 +168,31 @@ function StockAnalysisComponent() {
     setAnalysis(null);
 
     try {
-      console.log('Sending request for:', stockSymbol);
+      const params = {
+        stock_symbol: stockSymbol,
+        analysis_type: analysisType
+      };
+      console.log('Starting analysis with params:', params);
+      console.log('Analysis type is valid:', Object.values(ANALYSIS_OPTIONS).some(opt => opt.value === analysisType));
       
-      const response = await fetch('http://localhost:8000/analyze-stock', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({
-          stock_symbol: stockSymbol,
-          analysis_type: analysisType
-        })
-      });
+      const response = await analyzeStock(params);
 
-      console.log('Response status:', response.status);
-      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+      console.log('Raw API Response:', response);
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || `Failed to fetch stock analysis: ${response.status}`);
-      }
-
-      const responseText = await response.text();
-      console.log('Raw response text:', responseText);
-
-      let data;
-      try {
-        data = JSON.parse(responseText);
-        console.log('Parsed response data:', data);
-      } catch (parseError) {
-        console.error('Failed to parse response as JSON:', parseError);
-        data = { analysis: responseText };
-      }
-
-      if (!data || (!data.analysis && data.analysis !== '')) {
-        console.error('Invalid response format:', data);
+      if (!response || (!response.analysis && response.analysis !== '')) {
+        console.error('Invalid response format:', response);
         throw new Error('Response missing analysis data');
       }
 
-      const formattedAnalysis = formatAnalysisResponse(data.analysis);
-      console.log('Formatted analysis:', formattedAnalysis);
+      console.log('Formatting analysis response:', response.analysis);
+      const formattedAnalysis = formatAnalysisResponse(response.analysis);
+      console.log('Formatted analysis result:', formattedAnalysis);
       setAnalysis(formattedAnalysis);
     } catch (err) {
+      console.error('Full error object:', err);
       const errorMessage = err instanceof Error ? err.message : 'An error occurred';
+      console.error('Setting error message:', errorMessage);
       setError(errorMessage);
-      console.error('Analysis error:', err);
     } finally {
       setLoading(false);
     }
@@ -260,7 +257,7 @@ function StockAnalysisComponent() {
           
           <select 
             value={analysisType}
-            onChange={(e) => setAnalysisType(e.target.value as AnalysisType)}
+            onChange={handleAnalysisTypeChange}
             className="px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white"
           >
             {ANALYSIS_OPTIONS.map((option) => (
