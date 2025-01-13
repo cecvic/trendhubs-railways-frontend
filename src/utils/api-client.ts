@@ -27,13 +27,14 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 // Create axios instance with configuration
 const apiClient = axios.create({
-  baseURL: API_URL,
+  // Use relative URLs to leverage Vercel rewrites
+  baseURL: '',
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
   },
-  // Remove withCredentials since we're not using cookies
-  withCredentials: false,
+  // Match the CORS credentials setting with vercel.json
+  withCredentials: true,
 });
 
 // Add request interceptor for error handling
