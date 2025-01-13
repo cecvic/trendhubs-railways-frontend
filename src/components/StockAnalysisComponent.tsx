@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { ANALYSIS_OPTIONS, AnalysisType } from '@/types/analysis';
 import { analyzeStock } from '@/utils/api-client';
 
@@ -230,10 +231,15 @@ function StockAnalysisComponent() {
   const content = (
     <div className="max-w-4xl mx-auto p-6">
       <div className="bg-white dark:bg-gray-800 shadow-xl rounded-xl p-8 mb-8">
-        <div className="flex items-center gap-3 mb-6">
-          <svg className="h-8 w-8 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-          </svg>
+        <div className="flex flex-col items-center gap-6 mb-8">
+          <Image
+            src="/Trendhubs-full.png"
+            alt="Trendhubs Logo"
+            width={300}
+            height={76}
+            priority
+            className="dark:filter dark:brightness-200"
+          />
           <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent">
             Stock Analysis Tool
           </h1>
@@ -353,6 +359,17 @@ function StockAnalysisComponent() {
             </div>
           </div>
         )}
+
+        <div className="mt-12 pt-6 border-t border-gray-200 dark:border-gray-700">
+          <div className="text-center">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              © {new Date().getFullYear()} Trendhubs™. All rights reserved.
+            </p>
+            <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+              Powered by Artificial Intelligence | Advanced Stock Analysis
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );
