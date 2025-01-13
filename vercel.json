@@ -3,20 +3,17 @@
   "buildCommand": "next build",
   "outputDirectory": ".next",
   "framework": "nextjs",
-  "env": {
-    "NEXT_PUBLIC_API_URL": "https://fastapi-backend-production-2f5e.up.railway.app"
-  },
   "headers": [
     {
-      "source": "/(.*)",
+      "source": "/api/(.*)",
       "headers": [
         {
           "key": "Access-Control-Allow-Credentials",
-          "value": "true"
+          "value": "false"
         },
         {
           "key": "Access-Control-Allow-Origin",
-          "value": "https://fastapi-backend-production-2f5e.up.railway.app"
+          "value": "*"
         },
         {
           "key": "Access-Control-Allow-Methods",

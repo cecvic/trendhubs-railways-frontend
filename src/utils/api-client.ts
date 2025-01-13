@@ -23,28 +23,36 @@ interface HealthCheckResponse {
   status: 'healthy';
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-
 // Create axios instance with configuration
 const apiClient = axios.create({
-  // Use relative URLs to leverage Vercel rewrites
-  baseURL: '',
+  // Use absolute path to ensure rewrites work
+  baseURL: '/',
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
   },
-  // Match the CORS credentials setting with vercel.json
-  withCredentials: true,
+  // Set to false since we're using rewrites
+  withCredentials: false,
+  // Add timeout
+  timeout: 10000,
 });
 
 // Add request interceptor for error handling
 apiClient.interceptors.request.use(
   (config) => {
+    // Add timestamp to avoid caching
+    config.params = { 
+      ...config.params,
+      _t: new Date().getTime()
+    };
+    
     console.log('API Request Details:', {
       url: config.url,
       method: config.method,
       data: config.data,
-      headers: config.headers
+      headers: config.headers,
+      baseURL: config.baseURL,
+      params: config.params
     });
     return config;
   },
