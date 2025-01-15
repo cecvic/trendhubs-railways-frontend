@@ -1,7 +1,12 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { ANALYSIS_OPTIONS, AnalysisType } from '@/types/analysis';
+import { analyzeStock } from '@/utils/api-client';
+
+// Log available analysis options on import
+console.log('Available Analysis Options:', ANALYSIS_OPTIONS);
 
 interface AnalysisResponse {
   technical_indicators?: {
@@ -32,36 +37,128 @@ function StockAnalysisComponent() {
 
   useEffect(() => {
     setMounted(true);
+    console.log('Component mounted');
   }, []);
 
   if (!mounted) {
     return <div className="min-h-screen bg-gray-50 dark:bg-gray-900" />;
   }
 
+  const cleanText = (text: string): string => {
+    // First remove ** that wrap around words
+    const cleanedText = text.replace(/\*\*([^*]+)\*\*/g, '$1');
+    
+    return cleanedText
+      .replace(/\*\*/g, '')     // Remove any remaining **
+      .replace(/#+/g, '')       // Remove #
+      .replace(/^[-*]\s*/g, '') // Remove bullet points at start
+      .trim();
+  };
+
   const formatAnalysisResponse = (data: any): AnalysisResponse => {
     try {
-      // If the response is a string, try to parse it as JSON
-      const parsedData = typeof data === 'string' ? JSON.parse(data) : data;
-      
-      // Return structured data if it matches our interface
-      if (typeof parsedData === 'object' && parsedData !== null) {
-        return parsedData;
+      // If the response is a string, clean and format it
+      if (typeof data === 'string') {
+        // Clean the entire string first to handle multi-line ** patterns
+        const cleanedData = cleanText(data);
+        const lines = cleanedData.split('\n')
+          .map(line => line.trim())
+          .filter(Boolean); // Remove empty lines
+        
+        return {
+          analysis_summary: lines.join('\n')
+        };
       }
-      
-      // If it's just a string response, wrap it in our interface
+
+      // If it's an object, clean all string values
+      if (typeof data === 'object' && data !== null) {
+        const cleanedData: Record<string, any> = {};
+        for (const [key, value] of Object.entries(data)) {
+          if (typeof value === 'string') {
+            cleanedData[key] = cleanText(value);
+          } else if (typeof value === 'object' && value !== null) {
+            // Recursively clean nested objects
+            cleanedData[key] = formatAnalysisResponse(value);
+          } else {
+            cleanedData[key] = value;
+          }
+        }
+        return cleanedData;
+      }
+
       return {
-        analysis_summary: typeof data === 'string' ? data : JSON.stringify(data, null, 2)
+        analysis_summary: typeof data === 'string' ? cleanText(data) : JSON.stringify(data, null, 2)
       };
     } catch (e) {
-      console.log('Raw data received:', data);
-      // If parsing fails, return the original data as a summary
+      console.error('Error formatting analysis response:', e);
+      // If there's an error, still try to clean the data
       return {
-        analysis_summary: String(data)
+        analysis_summary: cleanText(String(data))
       };
     }
   };
 
+  const renderAnalysisSummary = (summary: string) => {
+    return summary.split('\n').map((line, index) => {
+      // Handle "Running:" lines
+      if (line.trim().toLowerCase().startsWith('running:')) {
+        return (
+          <p key={index} className="text-center italic text-gray-600 dark:text-gray-400 mb-4">
+            {line}
+          </p>
+        );
+      }
+
+      // Handle headings (lines ending with ':')
+      if (line.trim().endsWith(':')) {
+        const headingText = line.replace(/:$/, '').trim();
+        return (
+          <h3 key={index} className="text-3xl font-bold mb-6 text-gray-800 dark:text-gray-100 border-b-2 border-blue-500 pb-2">
+            {headingText}
+          </h3>
+        );
+      }
+
+      // Handle bullet points
+      if (line.trim().startsWith('-')) {
+        const bulletText = line.substring(1).trim();
+        return (
+          <div key={index} className="flex items-start mb-3 ml-6">
+            <span className="text-blue-500 mr-3 text-lg">•</span>
+            <p className="flex-1 text-gray-700 dark:text-gray-300">
+              {bulletText}
+            </p>
+          </div>
+        );
+      }
+
+      // Regular text
+      if (line.trim()) {
+        return (
+          <p key={index} className="mb-4 text-gray-600 dark:text-gray-400">
+            {line}
+          </p>
+        );
+      }
+
+      return null;
+    });
+  };
+
+  const handleAnalysisTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newType = e.target.value as AnalysisType;
+    console.log('Analysis type changed to:', newType);
+    setAnalysisType(newType);
+  };
+
   const handleAnalyze = async () => {
+    console.log('handleAnalyze called with:', {
+      stockSymbol,
+      analysisType,
+      loading,
+      error
+    });
+
     if (!stockSymbol) {
       setError('Please enter a stock symbol');
       return;
@@ -72,64 +169,77 @@ function StockAnalysisComponent() {
     setAnalysis(null);
 
     try {
-      console.log('Sending request for:', stockSymbol);
+      const params = {
+        stock_symbol: stockSymbol,
+        analysis_type: analysisType
+      };
+      console.log('Starting analysis with params:', params);
+      console.log('Analysis type is valid:', Object.values(ANALYSIS_OPTIONS).some(opt => opt.value === analysisType));
       
-      const response = await fetch('http://localhost:8000/analyze-stock', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({
-          stock_symbol: stockSymbol,
-          analysis_type: analysisType
-        })
-      });
+      const response = await analyzeStock(params);
 
-      console.log('Response status:', response.status);
-      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+      console.log('Raw API Response:', response);
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || `Failed to fetch stock analysis: ${response.status}`);
-      }
-
-      const responseText = await response.text();
-      console.log('Raw response text:', responseText);
-
-      let data;
-      try {
-        data = JSON.parse(responseText);
-        console.log('Parsed response data:', data);
-      } catch (parseError) {
-        console.error('Failed to parse response as JSON:', parseError);
-        data = { analysis: responseText };
-      }
-
-      if (!data || (!data.analysis && data.analysis !== '')) {
-        console.error('Invalid response format:', data);
+      if (!response || (!response.analysis && response.analysis !== '')) {
+        console.error('Invalid response format:', response);
         throw new Error('Response missing analysis data');
       }
 
-      const formattedAnalysis = formatAnalysisResponse(data.analysis);
-      console.log('Formatted analysis:', formattedAnalysis);
+      console.log('Formatting analysis response:', response.analysis);
+      const formattedAnalysis = formatAnalysisResponse(response.analysis);
+      console.log('Formatted analysis result:', formattedAnalysis);
       setAnalysis(formattedAnalysis);
     } catch (err) {
+      console.error('Full error object:', err);
       const errorMessage = err instanceof Error ? err.message : 'An error occurred';
+      console.error('Setting error message:', errorMessage);
       setError(errorMessage);
-      console.error('Analysis error:', err);
     } finally {
       setLoading(false);
     }
   };
 
+  const formatTextWithLinks = (text: string) => {
+    // Remove ** characters from text
+    text = text.replace(/\*\*/g, '');
+    
+    // URL regex pattern
+    const urlPattern = /(https?:\/\/[^\s]+)/g;
+    
+    // Split text by URLs and map through parts
+    const parts = text.split(urlPattern);
+    
+    return parts.map((part, index) => {
+      if (urlPattern.test(part)) {
+        // If part is a URL, render as link
+        return (
+          <a
+            key={index}
+            href={part}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-500 hover:text-blue-600 underline"
+          >
+            {new URL(part).hostname}
+          </a>
+        );
+      }
+      return part;
+    });
+  };
+
   const content = (
     <div className="max-w-4xl mx-auto p-6">
       <div className="bg-white dark:bg-gray-800 shadow-xl rounded-xl p-8 mb-8">
-        <div className="flex items-center gap-3 mb-6">
-          <svg className="h-8 w-8 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-          </svg>
+        <div className="flex flex-col items-center gap-6 mb-8">
+          <Image
+            src="/Trendhubs-full.png"
+            alt="Trendhubs Logo"
+            width={300}
+            height={76}
+            priority
+            className="dark:filter dark:brightness-200"
+          />
           <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent">
             Stock Analysis Tool
           </h1>
@@ -153,7 +263,7 @@ function StockAnalysisComponent() {
           
           <select 
             value={analysisType}
-            onChange={(e) => setAnalysisType(e.target.value as AnalysisType)}
+            onChange={handleAnalysisTypeChange}
             className="px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white"
           >
             {ANALYSIS_OPTIONS.map((option) => (
@@ -211,7 +321,7 @@ function StockAnalysisComponent() {
         )}
 
         {analysis && (
-          <div className="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-6">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
             <div className="flex items-center gap-2 mb-4">
               <svg className="h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
@@ -221,31 +331,27 @@ function StockAnalysisComponent() {
             
             <div className="prose dark:prose-invert max-w-none">
               {analysis.analysis_summary ? (
-                <div className="whitespace-pre-wrap bg-white dark:bg-gray-800 p-4 rounded-lg shadow-inner">
-                  {analysis.analysis_summary.split('\n').map((line, index) => (
-                    <p key={index} className="mb-2">
-                      {line}
-                    </p>
-                  ))}
+                <div className="whitespace-pre-wrap">
+                  {renderAnalysisSummary(analysis.analysis_summary)}
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-6">
                   {analysis.technical_indicators && (
-                    <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm">
-                      <h3 className="font-semibold text-lg mb-2">Technical Indicators</h3>
-                      <pre className="text-sm overflow-auto">{JSON.stringify(analysis.technical_indicators, null, 2)}</pre>
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+                      <h3 className="text-3xl font-bold mb-6 text-gray-800 dark:text-gray-100 border-b-2 border-blue-500 pb-2">Technical Indicators</h3>
+                      <pre className="text-sm overflow-auto text-gray-700 dark:text-gray-300">{JSON.stringify(analysis.technical_indicators, null, 2)}</pre>
                     </div>
                   )}
                   {analysis.fundamental_data && (
-                    <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm">
-                      <h3 className="font-semibold text-lg mb-2">Fundamental Data</h3>
-                      <pre className="text-sm overflow-auto">{JSON.stringify(analysis.fundamental_data, null, 2)}</pre>
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+                      <h3 className="text-3xl font-bold mb-6 text-gray-800 dark:text-gray-100 border-b-2 border-blue-500 pb-2">Fundamental Data</h3>
+                      <pre className="text-sm overflow-auto text-gray-700 dark:text-gray-300">{JSON.stringify(analysis.fundamental_data, null, 2)}</pre>
                     </div>
                   )}
                   {analysis.price_data && (
-                    <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm">
-                      <h3 className="font-semibold text-lg mb-2">Price Data</h3>
-                      <pre className="text-sm overflow-auto">{JSON.stringify(analysis.price_data, null, 2)}</pre>
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+                      <h3 className="text-3xl font-bold mb-6 text-gray-800 dark:text-gray-100 border-b-2 border-blue-500 pb-2">Price Data</h3>
+                      <pre className="text-sm overflow-auto text-gray-700 dark:text-gray-300">{JSON.stringify(analysis.price_data, null, 2)}</pre>
                     </div>
                   )}
                 </div>
@@ -253,6 +359,17 @@ function StockAnalysisComponent() {
             </div>
           </div>
         )}
+
+        <div className="mt-12 pt-6 border-t border-gray-200 dark:border-gray-700">
+          <div className="text-center">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              © {new Date().getFullYear()} Trendhubs™. All rights reserved.
+            </p>
+            <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+              Powered by Artificial Intelligence | Advanced Stock Analysis
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );
