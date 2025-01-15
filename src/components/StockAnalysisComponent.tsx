@@ -57,6 +57,11 @@ function StockAnalysisComponent() {
 
   const formatAnalysisResponse = (data: any): AnalysisResponse => {
     try {
+      // Handle null or undefined data
+      if (data === null || data === undefined) {
+        throw new Error('No analysis data received');
+      }
+
       // If the response is a string, clean and format it
       if (typeof data === 'string') {
         // Clean the entire string first to handle multi-line ** patterns
@@ -71,12 +76,14 @@ function StockAnalysisComponent() {
       }
 
       // If it's an object, clean all string values
-      if (typeof data === 'object' && data !== null) {
+      if (typeof data === 'object') {
         const cleanedData: Record<string, any> = {};
         for (const [key, value] of Object.entries(data)) {
           if (typeof value === 'string') {
             cleanedData[key] = cleanText(value);
-          } else if (typeof value === 'object' && value !== null) {
+          } else if (value === null || value === undefined) {
+            cleanedData[key] = ''; // Convert null/undefined to empty string
+          } else if (typeof value === 'object') {
             // Recursively clean nested objects
             cleanedData[key] = formatAnalysisResponse(value);
           } else {
@@ -86,15 +93,13 @@ function StockAnalysisComponent() {
         return cleanedData;
       }
 
+      // For any other type, convert to string
       return {
-        analysis_summary: typeof data === 'string' ? cleanText(data) : JSON.stringify(data, null, 2)
+        analysis_summary: String(data)
       };
     } catch (e) {
       console.error('Error formatting analysis response:', e);
-      // If there's an error, still try to clean the data
-      return {
-        analysis_summary: cleanText(String(data))
-      };
+      throw new Error('Failed to format analysis response: ' + (e instanceof Error ? e.message : 'Unknown error'));
     }
   };
 
@@ -174,15 +179,20 @@ function StockAnalysisComponent() {
         analysis_type: analysisType
       };
       console.log('Starting analysis with params:', params);
-      console.log('Analysis type is valid:', Object.values(ANALYSIS_OPTIONS).some(opt => opt.value === analysisType));
       
       const response = await analyzeStock(params);
-
       console.log('Raw API Response:', response);
 
-      if (!response || (!response.analysis && response.analysis !== '')) {
-        console.error('Invalid response format:', response);
-        throw new Error('Response missing analysis data');
+      // More lenient response validation
+      if (response === undefined || response === null) {
+        throw new Error('No response data received from server');
+      }
+
+      // Handle empty analysis data more gracefully
+      if (response.analysis === undefined || response.analysis === null) {
+        console.warn('Empty analysis received:', response);
+        setAnalysis({ analysis_summary: 'No analysis data available for this request.' });
+        return;
       }
 
       console.log('Formatting analysis response:', response.analysis);
@@ -191,7 +201,7 @@ function StockAnalysisComponent() {
       setAnalysis(formattedAnalysis);
     } catch (err) {
       console.error('Full error object:', err);
-      const errorMessage = err instanceof Error ? err.message : 'An error occurred';
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred during analysis';
       console.error('Setting error message:', errorMessage);
       setError(errorMessage);
     } finally {
