@@ -22,6 +22,10 @@ const nextConfig = {
   async rewrites() {
     return [
       {
+        source: '/api/analyze-stock',
+        destination: `${process.env.NEXT_PUBLIC_API_URL}/analyze-stock`,
+      },
+      {
         source: '/api/:path*',
         destination: `${process.env.NEXT_PUBLIC_API_URL}/:path*`,
       },
