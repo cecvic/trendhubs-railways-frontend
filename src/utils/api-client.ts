@@ -25,16 +25,13 @@ interface HealthCheckResponse {
 
 // Create axios instance with configuration
 const apiClient = axios.create({
-  // Use absolute path to ensure rewrites work
-  baseURL: '/',
+  baseURL: process.env.NEXT_PUBLIC_API_URL,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
   },
-  // Set to false since we're using rewrites
   withCredentials: false,
-  // Add timeout
-  timeout: 10000,
+  timeout: 60000,
 });
 
 // Add request interceptor for error handling
@@ -70,6 +67,12 @@ apiClient.interceptors.response.use(
       data: response.data,
       headers: response.headers
     });
+    
+    // Validate response data
+    if (response.data === undefined) {
+      throw new Error('Invalid response format: missing data');
+    }
+    
     return response;
   },
   (error) => {
@@ -93,6 +96,9 @@ apiClient.interceptors.response.use(
         request: error.request,
         config: error.config
       });
+      if (error.code === 'ECONNABORTED') {
+        throw new Error('Request timed out. The server is taking too long to respond.');
+      }
       throw new Error('No response received from server. Please check if the backend is running.');
     } else {
       console.error('API Request Setup Error:', {
@@ -106,13 +112,13 @@ apiClient.interceptors.response.use(
 
 // Stock analysis methods
 export const analyzeStock = async (params: StockAnalysisRequest): Promise<StockAnalysisResponse> => {
-  const response = await apiClient.post<StockAnalysisResponse>('/analyze-stock', params);
+  const response = await apiClient.post<StockAnalysisResponse>('/api/analyze-stock', params);
   return response.data;
 };
 
 // Health check method
 export const checkHealth = async (): Promise<HealthCheckResponse> => {
-  const response = await apiClient.get<HealthCheckResponse>('/health');
+  const response = await apiClient.get<HealthCheckResponse>('/api/health');
   return response.data;
 };
 
